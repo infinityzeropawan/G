@@ -67,55 +67,65 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         />
       )}
 
-      <aside className={`fixed left-0 top-0 h-full bg-gray-900 z-50 flex flex-col transition-all duration-300 ${
-        isCollapsed ? 'lg:w-[92px]' : 'lg:w-64'
-      } ${
-        isMobileOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full lg:translate-x-0'
-      }`}>
+      <aside className={`fixed left-0 top-0 h-screen bg-card border-r border-border flex flex-col transition-all duration-300 z-40
+        ${isCollapsed ? 'w-20' : 'w-64'}
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         
         {/* Logo & Toggle */}
-        <div className="flex items-center justify-center px-4 py-5 border-b border-gray-700/50">
+        <div className="flex items-center justify-center px-4 py-5 border-b border-border">
           <div className="flex items-center gap-3 overflow-hidden">
             <Image src="/logo.png" alt="GymSmart ERP" width={44} height={44} className="object-contain min-w-[44px]" />
             {(!isCollapsed || isMobileOpen) && (
               <div className="whitespace-nowrap transition-opacity duration-300">
-                <div className="text-white font-bold text-lg leading-tight">GymSmart</div>
+                <div className="text-foreground font-bold text-lg leading-tight">GymSmart</div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5 custom-scrollbar">
-          {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-            const Icon = item.icon;
-            // On mobile, it's always full width (not collapsed layout)
-            const showLabel = !isCollapsed || isMobileOpen;
-            
-            return (
-              <Link key={item.href} href={item.href} title={!showLabel ? item.label : ''}
-                className={`flex items-center gap-3 py-2 rounded-xl font-medium transition-all duration-200 group cursor-pointer ${
-                  !showLabel ? 'justify-center px-0' : 'px-3'
-                } ${
-                  active
-                    ? 'text-white shadow-md'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`} style={active ? { background: 'hsl(24 95% 53%)' } : {}}>
-                <Icon size={24} className={active ? 'text-white' : 'text-gray-400 group-hover:text-orange-400 transition-colors'} />
-                {showLabel && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Close Button (Mobile) */}
+        <button
+          onClick={() => setIsMobileOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-2 text-muted-foreground hover:bg-secondary rounded-lg"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
+          <nav className="space-y-1 px-3">
+            {filteredNavItems.map((item) => {
+              const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+              const Icon = item.icon;
+              // On mobile, it's always full width (not collapsed layout)
+              const showLabel = !isCollapsed || isMobileOpen;
+              
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all relative ${
+                    active
+                      ? 'text-primary-foreground font-medium shadow-sm'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`} style={active ? { background: 'hsl(var(--primary))' } : {}}>
+                  <Icon size={24} className={active ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary transition-colors'} />
+                  {showLabel && <span className="text-sm whitespace-nowrap">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         {/* User */}
-        <div className={`px-4 py-3 border-t border-gray-700/50 flex items-center ${(!isCollapsed || isMobileOpen) ? 'gap-3' : 'justify-center'}`}>
-          <div className="w-9 h-9 min-w-[36px] rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'hsl(24 95% 53%)' }}>{user?.name?.charAt(0)?.toUpperCase() || 'A'}</div>
+        <div className={`px-4 py-3 border-t border-border flex items-center ${(!isCollapsed || isMobileOpen) ? 'gap-3' : 'justify-center'}`}>
+          <div className="w-9 h-9 min-w-[36px] rounded-full flex items-center justify-center text-primary-foreground text-sm font-bold bg-primary">
+            {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+          </div>
           {(!isCollapsed || isMobileOpen) && (
             <div className="whitespace-nowrap overflow-hidden">
-              <div className="text-white text-sm font-medium">{user?.name || 'Admin'}</div>
-              <div className="text-gray-500 text-xs">{user?.role || 'Super Admin'}</div>
+              <div className="text-foreground text-sm font-medium">{user?.name || 'Admin'}</div>
+              <div className="text-muted-foreground text-xs">{user?.role || 'Super Admin'}</div>
             </div>
           )}
         </div>

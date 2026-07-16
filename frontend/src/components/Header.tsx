@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Search, LogOut, Settings, User, X, Menu } from 'lucide-react';
+import { Bell, Search, LogOut, Settings, User, X, Menu, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { getUser, logout } from '@/lib/api';
 
@@ -16,8 +17,11 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState<{ name?: string; email?: string; role?: string } | null>(null);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     setUser(getUser());
   }, []);
 
@@ -41,18 +45,18 @@ export default function Header({ title, subtitle }: HeaderProps) {
   }, []);
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+    <header className="bg-background border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-4">
         <button
-          className="p-2 -ml-3 text-gray-500 hover:text-gray-900 transition-colors bg-gray-100 hover:bg-gray-200 rounded-lg"
+          className="p-2 -ml-3 text-muted-foreground hover:text-foreground transition-colors bg-secondary hover:bg-muted rounded-lg"
           onClick={() => window.dispatchEvent(new Event('toggle-sidebar'))}
           title="Toggle Sidebar"
         >
           <Menu size={20} />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -98,6 +102,17 @@ export default function Header({ title, subtitle }: HeaderProps) {
           )}
         </div>
 
+        {/* Theme Toggle */}
+        {mounted && (
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            title="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+          </button>
+        )}
+
         {/* Profile */}
         <div className="relative" ref={profileRef}>
           <div
@@ -109,17 +124,17 @@ export default function Header({ title, subtitle }: HeaderProps) {
           </div>
 
           {showProfile && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-              <div className="px-4 py-3 border-b border-gray-50">
-                <p className="text-sm font-semibold text-gray-900">{user?.name || 'Admin'}</p>
-                <p className="text-xs text-gray-500">{user?.email || ''}</p>
-                {user?.role && <p className="text-xs text-orange-500 font-medium mt-0.5">{user.role}</p>}
+            <div className="absolute right-0 mt-2 w-56 bg-popover rounded-xl shadow-lg border border-border overflow-hidden z-50">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">{user?.name || 'Admin'}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+                {user?.role && <p className="text-xs text-primary font-medium mt-0.5">{user.role}</p>}
               </div>
               <div className="py-1">
-                <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setShowProfile(false)}>
+                <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-secondary" onClick={() => setShowProfile(false)}>
                   <User size={15} /> My Profile
                 </Link>
-                <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setShowProfile(false)}>
+                <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-secondary" onClick={() => setShowProfile(false)}>
                   <Settings size={15} /> Settings
                 </Link>
               </div>

@@ -1,247 +1,269 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { Search, Plus, Dumbbell, Edit2, Trash2, X, Save } from 'lucide-react';
+import { workoutApi, Exercise } from '@/lib/api';
 
-interface Workout {
-  id: number; name: string; level: string; days: number;
-  exercises: number; focus: string; duration: string; tags: string[];
-}
-interface Exercise {
-  id: number; name: string; muscle: string; equipment: string; difficulty: string;
-}
+const GYM_PRIMARY = 'hsl(var(--primary))';
 
-const initWorkouts: Workout[] = [
-  { id: 1, name: 'Push Pull Legs',      level: 'Intermediate', days: 6, exercises: 24, focus: 'Hypertrophy', duration: '75 min', tags: ['PPL', 'Classic'] },
-  { id: 2, name: 'Full Body Strength',  level: 'Beginner',     days: 3, exercises: 12, focus: 'Strength',    duration: '45 min', tags: ['Compound', 'Beginner'] },
-  { id: 3, name: 'Arnold Split',        level: 'Advanced',     days: 6, exercises: 30, focus: 'Bodybuilding', duration: '90 min', tags: ['Classic', 'Volume'] },
-  { id: 4, name: 'HIIT Fat Burn',       level: 'Intermediate', days: 4, exercises: 18, focus: 'Cardio',      duration: '40 min', tags: ['HIIT', 'Cardio'] },
-  { id: 5, name: 'Calisthenics',        level: 'Beginner',     days: 4, exercises: 15, focus: 'Bodyweight',  duration: '50 min', tags: ['Bodyweight', 'Flexible'] },
-  { id: 6, name: 'Powerlifting Program',level: 'Advanced',     days: 4, exercises: 10, focus: 'Strength',    duration: '80 min', tags: ['Powerlifting', 'Heavy'] },
-];
-
-const initExercises: Exercise[] = [
-  { id: 1, name: 'Barbell Squat',    muscle: 'Quadriceps',      equipment: 'Barbell',    difficulty: 'Intermediate' },
-  { id: 2, name: 'Bench Press',      muscle: 'Chest',           equipment: 'Barbell',    difficulty: 'Beginner' },
-  { id: 3, name: 'Deadlift',         muscle: 'Posterior Chain', equipment: 'Barbell',    difficulty: 'Advanced' },
-  { id: 4, name: 'Pull-Up',          muscle: 'Back',            equipment: 'Bodyweight', difficulty: 'Intermediate' },
-  { id: 5, name: 'Shoulder Press',   muscle: 'Shoulders',       equipment: 'Dumbbell',   difficulty: 'Beginner' },
-  { id: 6, name: 'Romanian Deadlift',muscle: 'Hamstrings',      equipment: 'Barbell',    difficulty: 'Intermediate' },
-];
-
-const GYM_ORANGE = 'hsl(24 95% 53%)';
-
-export default function Workout() {
-  const [tab, setTab] = useState('Workout Plans');
+export default function WorkoutLibrary() {
   const [search, setSearch] = useState('');
-  const [workouts, setWorkouts] = useState<Workout[]>(initWorkouts);
-  const [exercises, setExercises] = useState<Exercise[]>(initExercises);
+  const [workouts, setWorkouts] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Workout plan modal
-  const [showWkModal, setShowWkModal] = useState(false);
-  const [editWkId, setEditWkId] = useState<number | null>(null);
-  const [wkForm, setWkForm] = useState({ name: '', level: 'Beginner', days: '', exercises: '', focus: '', duration: '', tags: '' });
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState({
+    name: '',
+    category: 'Chest',
+    muscleGroup: '',
+    sets: '',
+    reps: '',
+    duration: '',
+    difficulty: 'BEGINNER',
+  });
 
-  // Exercise modal
-  const [showExModal, setShowExModal] = useState(false);
-  const [editExId, setEditExId] = useState<number | null>(null);
-  const [exForm, setExForm] = useState({ name: '', muscle: '', equipment: 'Barbell', difficulty: 'Beginner' });
-
-  // Workout CRUD
-  const openAddWk = () => { setEditWkId(null); setWkForm({ name: '', level: 'Beginner', days: '', exercises: '', focus: '', duration: '', tags: '' }); setShowWkModal(true); };
-  const openEditWk = (w: Workout) => { setEditWkId(w.id); setWkForm({ name: w.name, level: w.level, days: String(w.days), exercises: String(w.exercises), focus: w.focus, duration: w.duration, tags: w.tags.join(', ') }); setShowWkModal(true); };
-  const saveWk = (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = { ...wkForm, days: Number(wkForm.days), exercises: Number(wkForm.exercises), tags: wkForm.tags.split(',').map(t => t.trim()).filter(Boolean) };
-    if (editWkId) {
-      setWorkouts(workouts.map(w => w.id === editWkId ? { ...w, ...data } : w));
-    } else {
-      setWorkouts([...workouts, { id: Date.now(), ...data }]);
+  const fetchWorkouts = async () => {
+    try {
+      setLoading(true);
+      const res = await workoutApi.getExercises();
+      if (res.success) setWorkouts(res.data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load workouts');
+    } finally {
+      setLoading(false);
     }
-    setShowWkModal(false);
   };
-  const deleteWk = (id: number) => { if (confirm('Delete this workout plan?')) setWorkouts(workouts.filter(w => w.id !== id)); };
 
-  // Exercise CRUD
-  const openAddEx = () => { setEditExId(null); setExForm({ name: '', muscle: '', equipment: 'Barbell', difficulty: 'Beginner' }); setShowExModal(true); };
-  const openEditEx = (ex: Exercise) => { setEditExId(ex.id); setExForm({ name: ex.name, muscle: ex.muscle, equipment: ex.equipment, difficulty: ex.difficulty }); setShowExModal(true); };
-  const saveEx = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchWorkouts();
+  }, []);
+
+  const openAdd = () => {
+    setEditId(null);
+    setForm({ name: '', category: 'Chest', muscleGroup: '', sets: '', reps: '', duration: '', difficulty: 'BEGINNER' });
+    setShowModal(true);
+  };
+
+  const openEdit = (w: Exercise) => {
+    setEditId(w.id);
+    setForm({
+      name: w.name,
+      category: w.category,
+      muscleGroup: w.muscleGroup.join(', '),
+      sets: w.sets ? String(w.sets) : '',
+      reps: w.reps || '',
+      duration: w.duration || '',
+      difficulty: w.difficulty,
+    });
+    setShowModal(true);
+  };
+
+  const saveWorkout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editExId) {
-      setExercises(exercises.map(ex => ex.id === editExId ? { ...ex, ...exForm } : ex));
-    } else {
-      setExercises([...exercises, { id: Date.now(), ...exForm }]);
-    }
-    setShowExModal(false);
-  };
-  const deleteEx = (id: number) => { if (confirm('Delete this exercise?')) setExercises(exercises.filter(ex => ex.id !== id)); };
+    try {
+      const payload: Partial<Exercise> = {
+        name: form.name,
+        category: form.category,
+        muscleGroup: form.muscleGroup.split(',').map(s => s.trim()).filter(Boolean),
+        difficulty: form.difficulty,
+      };
+      if (form.sets) payload.sets = parseInt(form.sets, 10);
+      if (form.reps) payload.reps = form.reps;
+      if (form.duration) payload.duration = form.duration;
 
-  const filteredWk = workouts.filter(w => w.name.toLowerCase().includes(search.toLowerCase()));
-  const filteredEx = exercises.filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()) || ex.muscle.toLowerCase().includes(search.toLowerCase()));
+      if (editId) {
+        await workoutApi.updateExercise(editId, payload);
+      } else {
+        await workoutApi.createExercise(payload);
+      }
+      setShowModal(false);
+      fetchWorkouts();
+    } catch (err: any) {
+      alert(err.message || 'Failed to save workout');
+    }
+  };
+
+  const deleteWorkout = async (id: number) => {
+    if (confirm('Delete this workout/exercise?')) {
+      try {
+        await workoutApi.removeExercise(id);
+        fetchWorkouts();
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete workout');
+      }
+    }
+  };
+
+  const filteredWorkouts = workouts.filter(w => 
+    w.name.toLowerCase().includes(search.toLowerCase()) || 
+    w.category.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="min-h-full">
-      <Header title="Workout Library" subtitle="Comprehensive exercise and workout plan database" />
+      <Header title="Workout Library" subtitle="Manage exercises and training plans" />
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Banner */}
-        <div className="rounded-xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+        <div className="rounded-xl p-5 text-primary-foreground bg-primary/90">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold">Complete Workout Database</h2>
-              <p className="text-blue-100 mt-1 text-sm">{workouts.length} workout programs · {exercises.length} exercises</p>
+              <p className="text-primary-foreground/80 mt-1 text-sm">{workouts.length} exercises & routines available</p>
             </div>
-            <Dumbbell size={56} className="text-blue-300/40" />
+            <Dumbbell size={56} className="text-primary-foreground/20" />
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="border-b border-gray-100 flex justify-between items-center">
-            <div className="flex">
-              {['Workout Plans', 'Exercise Library'].map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`px-5 py-3.5 text-sm font-medium transition-colors border-b-2 ${tab === t ? 'text-orange-600 bg-orange-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                  style={tab === t ? { borderBottomColor: GYM_ORANGE } : {}}>
-                  {t}
-                </button>
-              ))}
-            </div>
-            <div className="px-4 flex gap-3 items-center">
+        {error && <div className="p-4 bg-destructive/10 text-destructive rounded-lg">{error}</div>}
+
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="border-b border-border flex justify-between items-center p-4">
+            <h3 className="font-semibold text-foreground">Exercises & Plans</h3>
+            <div className="flex gap-3 items-center">
               <div className="relative">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-36" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  placeholder="Search workouts..." 
+                  className="pl-8 pr-3 py-2 text-sm border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary w-48" 
+                />
               </div>
-              <button onClick={tab === 'Workout Plans' ? openAddWk : openAddEx}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg font-medium"
-                style={{ background: GYM_ORANGE }}>
-                <Plus size={15} /> Add
+              <button 
+                onClick={openAdd}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-primary-foreground rounded-lg font-medium bg-primary hover:opacity-90 transition-opacity"
+              >
+                <Plus size={15} /> Add New
               </button>
             </div>
           </div>
 
           <div className="p-5">
-            {/* Workout Plans grid */}
-            {tab === 'Workout Plans' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredWk.map(w => (
-                  <div key={w.id} className="border border-gray-100 rounded-xl p-4 hover:border-blue-200 hover:shadow-sm transition-all">
+            {loading ? (
+              <div className="text-center py-10 text-muted-foreground">Loading workouts...</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredWorkouts.map(w => (
+                  <div key={w.id} className="border border-border bg-background rounded-xl p-4 hover:border-primary/50 hover:shadow-sm transition-all group">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center"><Dumbbell size={17} className="text-blue-600" /></div>
-                      <div className="flex items-center gap-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${w.level === 'Beginner' ? 'bg-green-100 text-green-700' : w.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{w.level}</span>
-                        <button onClick={() => openEditWk(w)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 size={13} /></button>
-                        <button onClick={() => deleteWk(w.id)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={13} /></button>
+                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                        <Dumbbell size={17} className="text-primary" />
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(w)} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg"><Edit2 size={14} /></button>
+                        <button onClick={() => deleteWorkout(w.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg"><Trash2 size={14} /></button>
                       </div>
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-3">{w.name}</h3>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {[{ l: 'Days', v: w.days }, { l: 'Exercises', v: w.exercises }, { l: 'Duration', v: w.duration }].map(s => (
-                        <div key={s.l} className="bg-gray-50 rounded-lg p-2 text-center">
-                          <p className="text-sm font-bold text-gray-900">{s.v}</p>
-                          <p className="text-xs text-gray-500">{s.l}</p>
+                    
+                    <h3 className="font-semibold text-foreground line-clamp-1">{w.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-3">{w.category}</p>
+                    
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {(w.sets || w.reps) && (
+                        <div className="bg-secondary rounded-lg p-2 text-center">
+                          <p className="text-sm font-bold text-foreground">{w.sets || '-'} × {w.reps || '-'}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Sets/Reps</p>
                         </div>
-                      ))}
+                      )}
+                      {w.duration && (
+                        <div className="bg-secondary rounded-lg p-2 text-center">
+                          <p className="text-sm font-bold text-foreground">{w.duration}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1 mb-3">{w.tags.map(tag => <span key={tag} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{tag}</span>)}</div>
-                    <p className="text-xs text-gray-500">Focus: <span className="font-medium text-gray-700">{w.focus}</span></p>
+                    
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {w.muscleGroup.slice(0, 3).map(muscle => (
+                        <span key={muscle} className="text-[10px] bg-secondary border border-border text-foreground px-2 py-0.5 rounded-full">
+                          {muscle}
+                        </span>
+                      ))}
+                      {w.muscleGroup.length > 3 && <span className="text-[10px] text-muted-foreground">+{w.muscleGroup.length - 3}</span>}
+                    </div>
+                    
+                    <div className="mt-auto pt-2 border-t border-border flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">Difficulty:</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide uppercase
+                        ${w.difficulty === 'BEGINNER' ? 'bg-green-500/10 text-green-600' : 
+                          w.difficulty === 'INTERMEDIATE' ? 'bg-yellow-500/10 text-yellow-600' : 
+                          'bg-red-500/10 text-red-600'}`}
+                      >
+                        {w.difficulty}
+                      </span>
+                    </div>
                   </div>
                 ))}
-                {filteredWk.length === 0 && <div className="col-span-3 text-center py-10 text-gray-500">No workout plans found.</div>}
-              </div>
-            )}
-
-            {/* Exercise Library table */}
-            {tab === 'Exercise Library' && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50"><tr>{['Exercise', 'Primary Muscle', 'Equipment', 'Difficulty', 'Actions'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredEx.map(ex => (
-                      <tr key={ex.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{ex.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{ex.muscle}</td>
-                        <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{ex.equipment}</span></td>
-                        <td className="px-4 py-3"><span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${ex.difficulty === 'Beginner' ? 'bg-green-100 text-green-700' : ex.difficulty === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{ex.difficulty}</span></td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => openEditEx(ex)} className="text-blue-500 hover:text-blue-700"><Edit2 size={15} /></button>
-                            <button onClick={() => deleteEx(ex.id)} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredEx.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-gray-500">No exercises found.</td></tr>}
-                  </tbody>
-                </table>
+                {filteredWorkouts.length === 0 && (
+                  <div className="col-span-full text-center py-10 text-muted-foreground">No workouts found.</div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Workout Plan Modal */}
-      {showWkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h3 className="font-bold text-lg">{editWkId ? 'Edit Workout Plan' : 'Add Workout Plan'}</h3>
-              <button onClick={() => setShowWkModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-border">
+            <div className="flex justify-between items-center p-5 border-b border-border">
+              <h3 className="font-bold text-lg text-foreground">{editId ? 'Edit Workout' : 'Add Workout'}</h3>
+              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
             </div>
-            <form onSubmit={saveWk} className="p-5 space-y-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Plan Name *</label><input required type="text" value={wkForm.name} onChange={e => setWkForm({ ...wkForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
+            <form onSubmit={saveWorkout} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Name *</label>
+                <input required type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary" />
+              </div>
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
-                  <select value={wkForm.level} onChange={e => setWkForm({ ...wkForm, level: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    {['Beginner', 'Intermediate', 'Advanced', 'All Levels'].map(l => <option key={l}>{l}</option>)}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Category *</label>
+                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary">
+                    {['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio', 'Full Body'].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Days per week</label><input required type="number" min="1" max="7" value={wkForm.days} onChange={e => setWkForm({ ...wkForm, days: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Difficulty</label>
+                  <select value={form.difficulty} onChange={e => setForm({ ...form, difficulty: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary">
+                    <option value="BEGINNER">Beginner</option>
+                    <option value="INTERMEDIATE">Intermediate</option>
+                    <option value="ADVANCED">Advanced</option>
+                  </select>
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Focus Area</label><input required type="text" placeholder="e.g. Hypertrophy" value={wkForm.focus} onChange={e => setWkForm({ ...wkForm, focus: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Duration</label><input required type="text" placeholder="e.g. 60 min" value={wkForm.duration} onChange={e => setWkForm({ ...wkForm, duration: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">No. of Exercises</label><input required type="number" min="1" value={wkForm.exercises} onChange={e => setWkForm({ ...wkForm, exercises: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label><input type="text" placeholder="e.g. PPL, Classic" value={wkForm.tags} onChange={e => setWkForm({ ...wkForm, tags: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-              </div>
-              <div className="pt-2 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowWkModal(false)} className="px-4 py-2 border rounded-lg font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-lg font-medium text-white flex items-center gap-2" style={{ background: GYM_ORANGE }}><Save size={15} /> Save</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Exercise Modal */}
-      {showExModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h3 className="font-bold text-lg">{editExId ? 'Edit Exercise' : 'Add Exercise'}</h3>
-              <button onClick={() => setShowExModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-            <form onSubmit={saveEx} className="p-5 space-y-4">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Exercise Name *</label><input required type="text" value={exForm.name} onChange={e => setExForm({ ...exForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Primary Muscle *</label><input required type="text" placeholder="e.g. Chest, Quadriceps" value={exForm.muscle} onChange={e => setExForm({ ...exForm, muscle: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" /></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Equipment</label>
-                  <select value={exForm.equipment} onChange={e => setExForm({ ...exForm, equipment: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    {['Barbell', 'Dumbbell', 'Machine', 'Bodyweight', 'Cables', 'Kettlebell'].map(eq => <option key={eq}>{eq}</option>)}
-                  </select>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Muscle Groups (comma separated)</label>
+                <input type="text" placeholder="e.g. Chest, Triceps" value={form.muscleGroup} onChange={e => setForm({ ...form, muscleGroup: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary" />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Sets</label>
+                  <input type="number" min="1" value={form.sets} onChange={e => setForm({ ...form, sets: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary" />
                 </div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
-                  <select value={exForm.difficulty} onChange={e => setExForm({ ...exForm, difficulty: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    {['Beginner', 'Intermediate', 'Advanced'].map(d => <option key={d}>{d}</option>)}
-                  </select>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Reps</label>
+                  <input type="text" placeholder="e.g. 8-12" value={form.reps} onChange={e => setForm({ ...form, reps: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Duration</label>
+                  <input type="text" placeholder="e.g. 30 min" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:outline-none focus:border-primary" />
                 </div>
               </div>
-              <div className="pt-2 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowExModal(false)} className="px-4 py-2 border rounded-lg font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-lg font-medium text-white flex items-center gap-2" style={{ background: GYM_ORANGE }}><Save size={15} /> Save</button>
+              
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-border rounded-lg font-medium text-foreground hover:bg-secondary">Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-lg font-medium text-primary-foreground bg-primary flex items-center gap-2 hover:opacity-90">
+                  <Save size={15} /> Save Workout
+                </button>
               </div>
             </form>
           </div>

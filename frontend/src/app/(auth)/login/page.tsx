@@ -12,12 +12,25 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [roleTitle, setRoleTitle] = useState('Administrator Access');
 
   // If already logged in (user cookie exists), redirect to dashboard
   useEffect(() => {
     const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('gymsmart_user='));
     if (userCookie) {
       window.location.replace('/dashboard');
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const demo = searchParams.get('demo');
+    if (demo === 'superadmin') {
+      setEmail('admin@gymsmart.com');
+      setPassword('admin123');
+      setRoleTitle('SuperAdmin Access');
+    } else if (demo === 'admin') {
+      setEmail('gymadmin@gymsmart.com');
+      setPassword('gymadmin123');
+      setRoleTitle('Gym Admin Access');
     }
   }, []);
 
@@ -91,7 +104,7 @@ export default function Login() {
           <div className="w-full bg-[#1E2937] p-8 sm:p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-slate-700/50">
 
           <div className="mb-8">
-            <h2 className="text-[32px] font-bold text-white mb-2">SuperAdmin Access</h2>
+            <h2 className="text-[32px] font-bold text-white mb-2">{roleTitle}</h2>
             <p className="text-[#94A3B8]">Enter your administrative credentials to continue</p>
           </div>
 
