@@ -15,7 +15,11 @@ export default function Header({ title, subtitle }: HeaderProps) {
   const [showProfile, setShowProfile] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const user = getUser();
+  const [user, setUser] = useState<{ name?: string; role?: string } | null>(null);
+
+  useEffect(() => {
+    setUser(getUser());
+  }, []);
 
   const notifications = [
     { id: 1, text: 'New member Amit registered', time: '5m ago', unread: true },
