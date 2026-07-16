@@ -1,0 +1,291 @@
+// GymSmart ERP — Prisma Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  STAFF
+}
+
+enum MemberStatus {
+  ACTIVE
+  PENDING
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PAID
+  DUE
+  REFUNDED
+}
+
+enum BillingCycle {
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
+  TWELVE_MONTHS
+}
+
+enum PlanTier {
+  BASIC
+  GOLD
+  PREMIUM
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AttendanceType {
+  MEMBER
+  STAFF
+}
+
+enum InquiryStatus {
+  NEW
+  FOLLOW_UP
+  CONVERTED
+  LOST
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  role      Role     @default(STAFF)
+  branch    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Plan {
+  id           Int      @id @default(autoincrement())
+  name         String   // Basic, Gold, Premium
+  tier         PlanTier @unique
+  price1Month  Float
+  price3Month  Float
+  price6Month  Float
+  price12Month Float
+  features     String[]
+  isActive     Boolean  @default(true)
+  members      Member[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model Member {
+  id            Int          @id @default(autoincrement())
+  name          String
+  email         String       @unique
+  phone         String
+  gender        Gender
+  address       String?
+  branch        String
+  plan          Plan         @relation(fields: [planId], references: [id])
+  planId        Int
+  billingCycle  BillingCycle
+  status        MemberStatus @default(PENDING)
+  joinDate      DateTime
+  expiryDate    DateTime
+  paidAmount    Float        @default(0)
+  pendingAmount Float        @default(0)
+  photo         String?
+  payments      Payment[]
+  attendances   Attendance[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("members")
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  member    Member        @relation(fields: [memberId], references: [id])
+  memberId  Int
+  amount    Float
+  method    String        // UPI, Cash, Card, Net Banking
+  status    PaymentStatus @default(PAID)
+  notes     String?
+  invoiceNo String        @unique
+  paidAt    DateTime      @default(now())
+  createdAt DateTime      @default(now())
+
+  @@map("payments")
+}
+
+model Staff {
+  id          Int          @id @default(autoincrement())
+  name        String
+  email       String       @unique
+  phone       String
+  role        String       // Trainer, Receptionist, Manager, etc.
+  salary      Float
+  branch      String
+  gender      Gender
+  address     String?
+  joinDate    DateTime
+  isActive    Boolean      @default(true)
+  payrolls    Payroll[]
+  attendances Attendance[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("staff")
+}
+
+model Payroll {
+  id        Int      @id @default(autoincrement())
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  staffId   Int
+  month     String   // e.g. "June 2026"
+  amount    Float
+  status    String   // Paid / Pending
+  paidAt    DateTime?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@map("payrolls")
+}
+
+model Attendance {
+  id        Int            @id @default(autoincrement())
+  member    Member?        @relation(fields: [memberId], references: [id])
+  memberId  Int?
+  staff     Staff?         @relation(fields: [staffId], references: [id])
+  staffId   Int?
+  date      DateTime
+  checkIn   DateTime?
+  checkOut  DateTime?
+  type      AttendanceType
+  createdAt DateTime       @default(now())
+
+  @@map("attendances")
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  category    String      // Supplements, Accessories, Merchandise, etc.
+  price       Float
+  stock       Int         @default(0)
+  description String?
+  imageUrl    String?
+  isActive    Boolean     @default(true)
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("products")
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  items     OrderItem[]
+  total     Float
+  method    String      // UPI, Cash, Card
+  status    String      // Completed, Pending, Cancelled
+  notes     String?
+  createdAt DateTime    @default(now())
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  qty       Int
+  price     Float
+
+  @@map("order_items")
+}
+
+model Workout {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    String   // Chest, Back, Legs, Cardio, etc.
+  muscleGroup String[]
+  sets        Int?
+  reps        String?
+  duration    String?
+  difficulty  String   // Beginner, Intermediate, Advanced
+  description String?
+  videoUrl    String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("workouts")
+}
+
+model DietPlan {
+  id          Int      @id @default(autoincrement())
+  name        String
+  goal        String   // Weight Loss, Muscle Gain, Maintenance
+  calories    Int?
+  protein     Float?
+  carbs       Float?
+  fats        Float?
+  description String?
+  meals       String[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("diet_plans")
+}
+
+model Inquiry {
+  id        Int           @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String?
+  interest  String        // Membership type they are interested in
+  status    InquiryStatus @default(NEW)
+  source    String?       // Walk-in, Call, Website, Referral
+  notes     String?
+  followUpDate DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inquiries")
+}
+
+model Settings {
+  id          Int      @id @default(autoincrement())
+  gymName     String
+  ownerName   String?
+  phone       String?
+  email       String?
+  city        String?
+  gstNumber   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}

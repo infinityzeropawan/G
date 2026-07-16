@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function proxy(request: NextRequest) {
+  // Get the auth cookie
+  const authCookie = request.cookies.get('auth');
+
+  // List of public routes
+  const isPublicRoute = 
+    request.nextUrl.pathname === '/' || 
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg)$/);
+
+  // If trying to access a protected route without auth cookie
+  if (!isPublicRoute && !authCookie) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // If trying to access login page while already authenticated
+  if (request.nextUrl.pathname.startsWith('/login') && authCookie?.value === 'superadmin') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+};
