@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck, UserCheck } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import Footer from '@/components/Footer';
 
@@ -25,7 +25,7 @@ export default function Login() {
     const demo = searchParams.get('demo');
     if (demo === 'superadmin') {
       setEmail('admin@gymsmart.com');
-      setPassword('admin123');
+      setPassword('superadmin123');
       setRoleTitle('SuperAdmin Access');
     } else if (demo === 'admin') {
       setEmail('gymadmin@gymsmart.com');
@@ -171,6 +171,33 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          {/* Quick Demo Access */}
+          <div className="mt-8 pt-6 border-t border-slate-700/50">
+            <p className="text-center text-sm text-slate-400 mb-4 font-medium uppercase tracking-wider">Quick Demo Access</p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  setEmail('admin@gymsmart.com');
+                  setPassword('superadmin123');
+                  setRoleTitle('SuperAdmin Access');
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl border border-slate-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldCheck size={18} className="text-[#4F46E5]" /> Fill SuperAdmin Credentials
+              </button>
+              <button 
+                onClick={() => {
+                  setEmail('gymadmin@gymsmart.com');
+                  setPassword('gymadmin123');
+                  setRoleTitle('Gym Admin Access');
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl border border-slate-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <UserCheck size={18} className="text-[#22C55E]" /> Fill Gym Admin Credentials
+              </button>
+            </div>
+          </div>
 
           </div>
         </div>
