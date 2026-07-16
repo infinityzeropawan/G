@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import StatCard from '@/components/StatCard';
 import { Users, DollarSign, TrendingUp, AlertCircle, CheckCircle, Clock, UserCheck, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
-import { dashboardApi, type DashboardStats } from '@/lib/api';
+import { dashboardApi, type DashboardStats, getUser } from '@/lib/api';
 
 const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
@@ -24,8 +24,14 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [userName, setUserName] = useState('Admin');
 
   useEffect(() => {
+    const user = getUser();
+    if (user && user.name) {
+      setUserName(user.name);
+    }
+    
     dashboardApi.getStats()
       .then(res => setStats(res.data))
       .catch(e => setError(e.message))
@@ -54,7 +60,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-full">
-      <Header title="Dashboard" subtitle="Welcome back, Admin! Here's your gym overview." />
+      <Header title="Dashboard" subtitle={`Welcome back, ${userName}! Here's your gym overview.`} />
       <div className="p-4 sm:p-6 space-y-6">
 
         {/* KPI Row 1 */}

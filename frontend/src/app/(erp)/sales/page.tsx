@@ -1,45 +1,71 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/Header';
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, RefreshCw } from 'lucide-react';
+import { dashboardApi, membersApi, type Member } from '@/lib/api';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
-
-const monthlyData = [
-  { month: 'Jan', revenue: 280000, members: 52 },
-  { month: 'Feb', revenue: 295000, members: 48 },
-  { month: 'Mar', revenue: 310000, members: 61 },
-  { month: 'Apr', revenue: 298000, members: 55 },
-  { month: 'May', revenue: 325000, members: 67 },
-  { month: 'Jun', revenue: 342500, members: 64 },
-];
-
-const membershipReport = [
-  { plan: 'Basic', receivable: 120000, received: 114000, remaining: 6000, refund: 0 },
-  { plan: 'Gold', receivable: 96000, received: 88200, remaining: 7800, refund: 0 },
-  { plan: 'Premium', receivable: 182500, received: 175000, remaining: 7500, refund: 5200 },
-  { plan: 'Annual', receivable: 84000, received: 76400, remaining: 7600, refund: 0 },
-];
-
-const pendingReport = [
-  { name: 'Amit Kumar', plan: 'Gold', amount: '₹900', overdue: 5 },
-  { name: 'Vijay Singh', plan: 'Basic', amount: '₹1,200', overdue: 30 },
-  { name: 'Ravi Verma', plan: 'Premium', amount: '₹2,500', overdue: 12 },
-  { name: 'Kavita Joshi', plan: 'Gold', amount: '₹1,800', overdue: 8 },
-];
-
-const allMemberships = [
-  { name: 'Rahul Sharma', plan: 'Premium', start: '01 Jan', end: '01 Jul 2026', status: 'Active', amount: '₹2,500', days: 3 },
-  { name: 'Priya Patel', plan: 'Basic', start: '01 Feb', end: '01 Aug 2026', status: 'Active', amount: '₹1,200', days: 34 },
-  { name: 'Vijay Singh', plan: 'Basic', start: '01 May 25', end: '01 May 26', status: 'Expired', amount: '₹1,200', days: -58 },
-  { name: 'Anita Gupta', plan: 'Gold', start: '20 Jun', end: '20 Jun 2027', status: 'Active', amount: '₹1,800', days: 357 },
-];
 
 export default function Sales() {
   const [tab, setTab] = useState('Overview');
   const [dateFilter, setDateFilter] = useState('This Month');
+
+  const [loading, setLoading] = useState(true);
+  const [monthlyData, setMonthlyData] = useState<{ month: string; revenue: number; members: number }[]>([]);
+  const [membershipReport, setMembershipReport] = useState<{ plan: string; receivable: number; received: number; remaining: number; refund: number }[]>([]);
+  const [pendingReport, setPendingReport] = useState<any[]>([]);
+  const [allMemberships, setAllMemberships] = useState<Member[]>([]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [dashRes, memRes] = await Promise.all([
+        dashboardApi.getStats(),
+        membersApi.getAll({ limit: '1000' }),
+      ]);
+      const s = dashRes.data;
+      const m = memRes.data.members;
+
+      // Construct monthlyData from memberGrowth and revenueChart
+      const mGrowth = s.memberGrowth || [];
+      const mRev = s.revenueChart || [];
+      
+      const merged = mRev.map((r: any) => {
+        const growth = mGrowth.find((g: any) => g.month === r.month);
+        return { month: r.month, revenue: r.revenue, members: growth ? growth.count : 0 };
+      });
+      setMonthlyData(merged.length > 0 ? merged : [
+        { month: 'Jan', revenue: 0, members: 0 },
+        { month: 'Feb', revenue: 0, members: 0 }
+      ]);
+
+      // Construct membershipReport
+      const planMap = new Map<string, any>();
+      m.forEach(mem => {
+        const pName = mem.plan?.name || 'Unknown';
+        if (!planMap.has(pName)) planMap.set(pName, { plan: pName, receivable: 0, received: 0, remaining: 0, refund: 0 });
+        const entry = planMap.get(pName);
+        entry.received += mem.paidAmount;
+        entry.remaining += mem.pendingAmount;
+        entry.receivable += mem.paidAmount + mem.pendingAmount;
+      });
+      setMembershipReport(Array.from(planMap.values()));
+
+      // Construct pendingReport
+      setPendingReport(s.pendingPaymentsList || []);
+      setAllMemberships(m);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
+
 
   return (
     <div className="min-h-full">
@@ -56,6 +82,7 @@ export default function Sales() {
             ))}
           </div>
           <div className="flex gap-2">
+            <button onClick={loadData} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><RefreshCw size={13} /> Refresh</button>
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Filter size={13} /> Filter by Name</button>
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Download size={13} /> Export</button>
           </div>
@@ -73,7 +100,9 @@ export default function Sales() {
           </div>
 
           <div className="p-5">
-            {tab === 'Overview' && (
+            {loading ? (
+              <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+            ) : tab === 'Overview' ? (
               <div className="space-y-6">
                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
                   <h3 className="font-bold text-gray-900 mb-2">Monthly Revenue (₹)</h3>
@@ -140,11 +169,9 @@ export default function Sales() {
                   </div>
                 </div>
               </div>
-            )}
-
-            {tab === 'Membership Report' && (
+            ) : tab === 'Membership Report' ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead className="bg-gray-50"><tr>{['Plan', 'Total Receivable', 'Amount Received', 'Remaining', 'Refund'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {membershipReport.map((r, i) => (
@@ -158,17 +185,15 @@ export default function Sales() {
                     ))}
                     <tr className="bg-gray-50 font-semibold border-t-2 border-gray-200">
                       <td className="px-4 py-3 text-sm text-gray-900">Total</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">₹4,82,500</td>
-                      <td className="px-4 py-3 text-sm text-green-700">₹4,53,600</td>
-                      <td className="px-4 py-3 text-sm text-yellow-700">₹28,900</td>
-                      <td className="px-4 py-3 text-sm text-red-600">₹5,200</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{fmt(membershipReport.reduce((a, b) => a + b.receivable, 0))}</td>
+                      <td className="px-4 py-3 text-sm text-green-700">{fmt(membershipReport.reduce((a, b) => a + b.received, 0))}</td>
+                      <td className="px-4 py-3 text-sm text-yellow-700">{fmt(membershipReport.reduce((a, b) => a + b.remaining, 0))}</td>
+                      <td className="px-4 py-3 text-sm text-red-600">{fmt(membershipReport.reduce((a, b) => a + b.refund, 0))}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            )}
-
-            {tab === 'Pending Payments' && (
+            ) : tab === 'Pending Payments' ? (
               <div>
                 <p className="text-sm text-gray-500 mb-4">{pendingReport.length} members with pending payments</p>
                 <div className="space-y-3">
@@ -176,19 +201,17 @@ export default function Sales() {
                     <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:border-orange-200 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-semibold text-sm">{p.name.charAt(0)}</div>
-                        <div><p className="font-medium text-gray-900">{p.name}</p><p className="text-xs text-gray-500">{p.plan} Plan</p></div>
+                        <div><p className="font-medium text-gray-900">{p.name}</p><p className="text-xs text-gray-500">ID: {p.id}</p></div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-right"><p className="font-bold text-red-600">{p.amount}</p><p className="text-xs text-gray-400">{p.overdue} days overdue</p></div>
+                        <div className="text-right"><p className="font-bold text-red-600">{fmt(p.pendingAmount)}</p><p className="text-xs text-gray-400">Expires {new Date(p.expiryDate).toLocaleDateString('en-IN')}</p></div>
                         <button className="px-3 py-1.5 text-xs text-white rounded-lg font-medium" style={{ background: 'hsl(24 95% 53%)' }}>Send Reminder</button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-
-            {tab === 'All Memberships' && (
+            ) : tab === 'All Memberships' ? (
               <div>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {['All', 'Active', 'Expiring Soon', 'Expired'].map(f => (
@@ -196,25 +219,28 @@ export default function Sales() {
                   ))}
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[800px]">
                     <thead className="bg-gray-50"><tr>{['Member', 'Plan', 'Start', 'End Date', 'Status', 'Amount', 'Days Left'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-gray-100">
-                      {allMemberships.map((r, i) => (
-                        <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{r.name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{r.plan}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{r.start}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{r.end}</td>
-                          <td className="px-4 py-3"><span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${r.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span></td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{r.amount}</td>
-                          <td className="px-4 py-3 text-sm font-medium" style={{ color: r.days < 0 ? '#ef4444' : r.days <= 7 ? '#ef4444' : r.days <= 30 ? '#f59e0b' : '#22c55e' }}>{r.days < 0 ? `${Math.abs(r.days)}d ago` : `${r.days} days`}</td>
-                        </tr>
-                      ))}
+                      {allMemberships.map((r, i) => {
+                        const days = Math.ceil((new Date(r.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+                        return (
+                          <tr key={r.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{r.name}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{r.plan?.name || 'N/A'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{new Date(r.joinDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{new Date(r.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                            <td className="px-4 py-3"><span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${r.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span></td>
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{fmt(r.paidAmount)}</td>
+                            <td className="px-4 py-3 text-sm font-medium" style={{ color: days < 0 ? '#ef4444' : days <= 7 ? '#ef4444' : days <= 30 ? '#f59e0b' : '#22c55e' }}>{days < 0 ? `${Math.abs(days)}d ago` : `${days} days`}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

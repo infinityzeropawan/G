@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import { MembersService } from './members.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateMemberDto } from './dto/create-member.dto';
+import { UpdateMemberDto } from './dto/update-member.dto';
+import { RenewMemberDto } from './dto/renew-member.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('members')
@@ -18,7 +21,7 @@ export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
   @Post()
-  create(@Body() createMemberDto: any) {
+  create(@Body() createMemberDto: CreateMemberDto) {
     return this.membersService.create(createMemberDto);
   }
 
@@ -38,7 +41,7 @@ export class MembersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMemberDto: any) {
+  update(@Param('id') id: string, @Body() updateMemberDto: UpdateMemberDto) {
     return this.membersService.update(+id, updateMemberDto);
   }
 
@@ -48,7 +51,7 @@ export class MembersController {
   }
 
   @Post(':id/renew')
-  renewMembership(@Param('id') id: string, @Body() body: any) {
+  renewMembership(@Param('id') id: string, @Body() body: RenewMemberDto) {
     return this.membersService.renewMembership(+id, body);
   }
 }

@@ -10,7 +10,7 @@ import {
   Calendar, CreditCard, Clock, Save, Printer
 } from 'lucide-react';
 import ThermalReceipt, { ReceiptData } from '@/components/ThermalReceipt';
-import { membersApi, plansApi, financeApi, type Member, type Plan, type Payment } from '@/lib/api';
+import { membersApi, plansApi, financeApi, attendanceApi, type Member, type Plan, type Payment } from '@/lib/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,18 +105,17 @@ export default function Members() {
       const pRes = await financeApi.getByMember(memberId);
       setPayments(pRes.data);
       // Fetch real attendance
-      const tokenRes = await fetch('/api/auth/token');
-      const { token } = tokenRes.ok ? await tokenRes.json() : { token: null };
-      const aRes = await fetch(`http://localhost:5000/api/attendance?memberId=${memberId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).then(r => r.json());
+      const aRes = await attendanceApi.getAll({ memberId: memberId.toString() });
       if (aRes.success) {
         // Convert real DB attendance records to the day status format expected by UI
-        // This is a naive conversion for current month for demonstration, but driven by DB
-        const daysInMonth = 30;
+        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+        const currentMonth = new Date().getMonth();
         const realAtt = Array.from({ length: daysInMonth }, (_, i) => {
           const d = i + 1;
-          const rec = aRes.data.find((a: any) => new Date(a.date).getDate() === d);
+          const rec = aRes.data.find((a: any) => {
+            const date = new Date(a.date);
+            return date.getDate() === d && date.getMonth() === currentMonth;
+          });
           return { day: d, status: rec ? 'P' : 'A' };
         });
         setAttMap(prev => ({ ...prev, [memberId]: realAtt }));
@@ -174,10 +173,6 @@ export default function Members() {
   // ─── Attendance helpers ─────────────────────────────────────────────────────
 
   const getAtt = (id: number) => attMap[id] || [];
-  const toggleAtt = (memberId: number, day: number) => {
-    const att = getAtt(memberId).map(a => a.day === day ? { ...a, status: a.status === 'P' ? 'A' : a.status === 'A' ? 'L' : 'P' } : a);
-    setAttMap(prev => ({ ...prev, [memberId]: att }));
-  };
 
   // ─── Messaging ────────────────────────────────────────────────────────────
 
@@ -210,7 +205,7 @@ export default function Members() {
     const presentDays = att.filter(a => a.status === 'P').length;
     const absentDays  = att.filter(a => a.status === 'A').length;
     const leaveDays   = att.filter(a => a.status === 'L').length;
-    const attPct      = Math.round((presentDays / att.length) * 100);
+    const attPct      = att.length > 0 ? Math.round((presentDays / att.length) * 100) : 0;
     const totalPaid   = payments.filter(p => p.status === 'PAID').reduce((s, p) => s + p.amount, 0);
     const totalDue    = payments.filter(p => p.status === 'DUE').reduce((s, p) => s + p.amount, 0);
 
@@ -242,7 +237,7 @@ export default function Members() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Member ID',   value: `GS${String(selectedMember.id).padStart(4, '0')}` },
                 { label: 'Branch',      value: selectedMember.branch },
@@ -295,7 +290,7 @@ export default function Members() {
               {/* Attendance Tab */}
               {profileTab === 'attendance' && (
                 <div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {[
                       { label: 'Present',      value: presentDays, color: 'text-green-600', bg: 'bg-green-50' },
                       { label: 'Absent',       value: absentDays,  color: 'text-red-600',   bg: 'bg-red-50'   },
@@ -305,13 +300,12 @@ export default function Members() {
                       <div key={i} className={`${s.bg} rounded-xl p-4`}><p className="text-xs text-gray-500 mb-1">{s.label}</p><p className={`text-2xl font-bold ${s.color}`}>{s.value}</p></div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 mb-3">Click a day to toggle: 🟢 Present → 🔴 Absent → 🟡 Leave</p>
+                  <p className="text-xs text-gray-400 mb-3">Attendance records for the current month: 🟢 Present | 🔴 Absent</p>
                   <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-10">
                     {att.map(({ day, status }) => (
-                      <button key={day} onClick={() => toggleAtt(selectedMember.id, day)}
-                        className={`h-10 w-full rounded-lg flex items-center justify-center text-xs font-bold transition-all hover:scale-110 ${status === 'P' ? 'bg-green-100 text-green-700' : status === 'A' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      <div key={day} className={`h-10 w-full rounded-lg flex items-center justify-center text-xs font-bold ${status === 'P' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {day}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -365,7 +359,7 @@ export default function Members() {
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Members', value: stats.total, color: 'text-blue-600', bg: 'bg-blue-50',   icon: User },
             { label: 'Active',        value: stats.active, color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle },
@@ -403,7 +397,7 @@ export default function Members() {
             <div className="flex items-center justify-center py-16"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-gray-50">
                   <tr>{['Member', 'Plan', 'Status', 'Billing Cycle', 'Paid', 'Pending', 'Expiry', 'Actions'].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{h}</th>

@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import { StoreService } from './store.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('store')
@@ -22,11 +25,11 @@ export class StoreController {
     return this.storeService.findAllProducts(query);
   }
   @Post('products')
-  createProduct(@Body() dto: any) {
+  createProduct(@Body() dto: CreateProductDto) {
     return this.storeService.createProduct(dto);
   }
   @Patch('products/:id')
-  updateProduct(@Param('id') id: string, @Body() dto: any) {
+  updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.storeService.updateProduct(+id, dto);
   }
   @Delete('products/:id')
@@ -39,7 +42,7 @@ export class StoreController {
     return this.storeService.findAllOrders(query);
   }
   @Post('orders')
-  createOrder(@Body() dto: any) {
+  createOrder(@Body() dto: CreateOrderDto) {
     return this.storeService.createOrder(dto);
   }
 

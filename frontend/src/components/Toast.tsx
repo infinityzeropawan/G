@@ -28,7 +28,7 @@ export default function Toast({ message, type, onClose }: ToastProps) {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border max-w-sm"
+      className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border sm:max-w-sm"
       style={{ background: bg, borderColor: border, animation: 'toastIn 0.3s ease' }}
     >
       <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: iconColor + '22' }}>

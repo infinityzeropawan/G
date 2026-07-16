@@ -35,6 +35,23 @@ async function main() {
   });
   console.log('✅ SuperAdmin created');
 
+  // 1.5 Create Gym Admin User
+  const adminHashed = await bcrypt.hash('gymadmin123', 10);
+  await prisma.user.upsert({
+    where: { email: 'gymadmin@gymsmart.com' },
+    update: {},
+    create: {
+      name: 'Gym Admin',
+      email: 'gymadmin@gymsmart.com',
+      password: adminHashed,
+      role: 'ADMIN',
+      phone: '+91 88888 77777',
+      branch: 'Main Branch',
+      isActive: true,
+    },
+  });
+  console.log('✅ Gym Admin created');
+
   // 2. Plans
   const plans = [
     { id: 1, name: 'Basic', tier: 'BASIC' as const, price1Month: 1200, price3Month: 3000, price6Month: 5500, price12Month: 10000, features: ['Gym Access', 'Locker'] },

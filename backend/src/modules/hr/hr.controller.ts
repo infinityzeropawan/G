@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import { HrService } from './hr.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import { UpdateStaffDto } from './dto/update-staff.dto';
+import { CreatePayrollDto } from './dto/create-payroll.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('hr')
@@ -22,7 +25,7 @@ export class HrController {
     return this.hrService.findAllStaff(query);
   }
   @Post('staff')
-  createStaff(@Body() dto: any) {
+  createStaff(@Body() dto: CreateStaffDto) {
     return this.hrService.createStaff(dto);
   }
   @Get('staff/:id')
@@ -30,7 +33,7 @@ export class HrController {
     return this.hrService.findOneStaff(+id);
   }
   @Patch('staff/:id')
-  updateStaff(@Param('id') id: string, @Body() dto: any) {
+  updateStaff(@Param('id') id: string, @Body() dto: UpdateStaffDto) {
     return this.hrService.updateStaff(+id, dto);
   }
   @Delete('staff/:id')
@@ -43,7 +46,7 @@ export class HrController {
     return this.hrService.findAllPayrolls(query);
   }
   @Post('payrolls')
-  createPayroll(@Body() dto: any) {
+  createPayroll(@Body() dto: CreatePayrollDto) {
     return this.hrService.createPayroll(dto);
   }
   @Patch('payrolls/:id/status')

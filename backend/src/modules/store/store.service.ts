@@ -4,6 +4,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 @Injectable()
 export class StoreService {
@@ -16,11 +19,11 @@ export class StoreService {
     });
     return { success: true, data };
   }
-  async createProduct(dto: any) {
+  async createProduct(dto: CreateProductDto) {
     const data = await this.prisma.product.create({ data: dto });
     return { success: true, data };
   }
-  async updateProduct(id: number, dto: any) {
+  async updateProduct(id: number, dto: UpdateProductDto) {
     const data = await this.prisma.product.update({ where: { id }, data: dto });
     return { success: true, data };
   }
@@ -40,7 +43,7 @@ export class StoreService {
     return { success: true, data: { orders, total: orders.length } };
   }
 
-  async createOrder(dto: any) {
+  async createOrder(dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
     }
@@ -76,29 +79,32 @@ export class StoreService {
     // All checks passed — create order and decrement stock
     const total = resolvedItems.reduce((sum, i) => sum + i.price * i.qty, 0);
 
-    const order = await this.prisma.order.create({
-      data: {
-        total,
-        method: dto.method,
-        status: 'Completed',
-        notes: dto.notes,
-      },
-    });
-
-    for (const item of resolvedItems) {
-      await this.prisma.orderItem.create({
+    const order = await this.prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
         data: {
-          orderId: order.id,
-          productId: item.productId,
-          qty: item.qty,
-          price: item.price,
+          total,
+          method: dto.method,
+          status: 'Completed',
+          notes: dto.notes,
         },
       });
-      await this.prisma.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.qty } },
-      });
-    }
+
+      for (const item of resolvedItems) {
+        await tx.orderItem.create({
+          data: {
+            orderId: createdOrder.id,
+            productId: item.productId,
+            qty: item.qty,
+            price: item.price,
+          },
+        });
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.qty } },
+        });
+      }
+      return createdOrder;
+    });
 
     const data = await this.prisma.order.findUnique({
       where: { id: order.id },

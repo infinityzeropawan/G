@@ -110,6 +110,7 @@ model Member {
   expiryDate    DateTime
   paidAmount    Float        @default(0)
   pendingAmount Float        @default(0)
+  isActive      Boolean      @default(true)
   photo         String?
   payments      Payment[]
   attendances   Attendance[]

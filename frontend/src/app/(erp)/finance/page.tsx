@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Toast, { ToastType } from '@/components/Toast';
 import { FileText, TrendingUp, DollarSign, Plus, Trash2, X, RefreshCw } from 'lucide-react';
-import { financeApi, type Payment, type FinanceSummary } from '@/lib/api';
+import { financeApi, membersApi, type Payment, type FinanceSummary, type Member } from '@/lib/api';
 
 const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
@@ -29,6 +29,13 @@ export default function Finance() {
   const [toast, setToast]           = useState<{ message: string; type: ToastType } | null>(null);
   const [showModal, setShowModal]   = useState(false);
   const [form, setForm] = useState({ memberId: '', amount: '', method: 'UPI', notes: '' });
+  const [activeMembers, setActiveMembers] = useState<Member[]>([]);
+
+  useEffect(() => {
+    if (showModal && activeMembers.length === 0) {
+      membersApi.getAll({ limit: '1000' }).then(res => setActiveMembers(res.data.members || []));
+    }
+  }, [showModal, activeMembers.length]);
 
   const showToast = useCallback((msg: string, t: ToastType) => setToast({ message: msg, type: t }), []);
 
@@ -73,7 +80,7 @@ export default function Finance() {
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map((k, i) => (
             <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl ${k.bg} flex items-center justify-center`}><k.icon size={19} className={k.color} /></div>
@@ -84,7 +91,7 @@ export default function Finance() {
 
         {/* Revenue by Method */}
         {summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(summary.revenueByMethod).map(([method, amount]) => (
               <div key={method} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-xs text-gray-500 mb-1">{method}</p>
@@ -114,7 +121,7 @@ export default function Finance() {
             {tab === 'Payments' && (
               loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div> : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[800px]">
                     <thead className="bg-gray-50"><tr>{['Invoice No', 'Member', 'Amount', 'Method', 'Status', 'Date'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-gray-100">
                       {payments.map(p => (
@@ -143,10 +150,11 @@ export default function Finance() {
                     return (
                       <div key={i} className="flex items-center gap-3">
                         <span className="text-xs text-gray-500 w-20">{d.month}</span>
-                        <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full flex items-center pl-3" style={{ width: `${(d.revenue / max) * 100}%`, background: 'hsl(24 95% 53%)' }}>
-                            {d.revenue > 0 && <span className="text-xs text-white font-medium">{fmt(d.revenue)}</span>}
+                        <div className="flex-1 h-6 bg-gray-100 rounded-full flex items-center">
+                          <div className="h-full rounded-full flex items-center pl-3" style={{ width: `${Math.max((d.revenue / max) * 100, 2)}%`, background: 'hsl(24 95% 53%)' }}>
+                            {(d.revenue / max) > 0.15 && d.revenue > 0 && <span className="text-xs text-white font-medium">{fmt(d.revenue)}</span>}
                           </div>
+                          {(d.revenue / max) <= 0.15 && d.revenue > 0 && <span className="text-xs text-gray-700 font-medium ml-2">{fmt(d.revenue)}</span>}
                         </div>
                       </div>
                     );
@@ -168,8 +176,11 @@ export default function Finance() {
             </div>
             <form onSubmit={handleAddPayment} className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Member ID</label>
-                <input required type="number" placeholder="Enter Member ID" value={form.memberId} onChange={e => setForm({ ...form, memberId: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Member</label>
+                <select required value={form.memberId} onChange={e => setForm({ ...form, memberId: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                  <option value="">Select a member</option>
+                  {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name} (ID: {m.id})</option>)}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>

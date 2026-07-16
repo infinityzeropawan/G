@@ -179,7 +179,7 @@ export default function Store() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead className="bg-gray-50"><tr>{['Order ID', 'Total', 'Method', 'Status', 'Date', 'Receipt'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {orders.map(o => (

@@ -98,7 +98,7 @@ export default function Inquiries() {
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((s, i) => (
             <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}><s.icon size={19} className={s.color} /></div>
@@ -108,9 +108,9 @@ export default function Inquiries() {
         </div>
 
         {/* Toolbar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3 items-center justify-between">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone..." className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 w-64" />
-          <div className="flex gap-2">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone..." className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 w-full sm:w-64" />
+          <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="border border-gray-200 rounded-xl text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
               <option value="All">All Status</option>
               {Object.entries(STATUS_LABELS).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
@@ -126,7 +126,7 @@ export default function Inquiries() {
             <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-gray-50"><tr>{['Lead', 'Contact', 'Interest', 'Source', 'Status', 'Date', 'Actions'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">{h}</th>)}</tr></thead>
                 <tbody className="divide-y divide-gray-100">
                   {filtered.map(inq => (

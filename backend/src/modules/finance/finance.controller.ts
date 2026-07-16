@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('finance')
@@ -16,7 +17,7 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Post('payments')
-  createPayment(@Body() dto: any) {
+  createPayment(@Body() dto: CreatePaymentDto) {
     return this.financeService.createPayment(dto);
   }
 

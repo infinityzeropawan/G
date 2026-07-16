@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import { Settings, Bell, Shield, CreditCard, Building, Smartphone, Save, RefreshCw } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import toast from 'react-hot-toast';
+import Toast from '@/components/Toast';
 
 const GYM_ORANGE = 'hsl(24 95% 53%)';
 
@@ -13,6 +13,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ gymName: '', ownerName: '', phone: '', email: '', city: '', gstNumber: '' });
+  const [toastMsg, setToastMsg] = useState<{message: string, type: 'success' | 'error' | 'email' | 'whatsapp'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3000);
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -23,7 +29,7 @@ export default function SettingsPage() {
       const res: any = await apiFetch('/settings');
       if (res.data) setForm(res.data);
     } catch (err: any) {
-      toast.error('Failed to load settings');
+      showToast('Failed to load settings', 'error');
     } finally {
       setLoading(false);
     }
@@ -36,9 +42,9 @@ export default function SettingsPage() {
         method: 'POST',
         body: JSON.stringify(form)
       });
-      toast.success('Settings saved successfully!');
+      showToast('Settings saved successfully!', 'success');
     } catch (err: any) {
-      toast.error('Failed to save settings');
+      showToast('Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -134,6 +140,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      {toastMsg && <Toast message={toastMsg.message} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
     </div>
   );
 }

@@ -10,5 +10,7 @@ Thumbs.db
 .idea/
 
 # Environment files
-!.env
-!.env.*
+.env
+.env.*
+token.txt
+*.txt

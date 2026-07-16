@@ -15,64 +15,53 @@ export class DashboardService {
     sixMonthsAgo.setDate(1);
     sixMonthsAgo.setHours(0, 0, 0, 0);
 
-    const totalMembers = await this.prisma.member.count();
-    const activeMembers = await this.prisma.member.count({
-      where: { status: 'ACTIVE' },
-    });
-    const pendingMembers = await this.prisma.member.count({
-      where: { status: 'PENDING' },
-    });
-    const expiredMembers = await this.prisma.member.count({
-      where: { status: 'EXPIRED' },
-    });
+    const [
+      totalMembers,
+      activeMembers,
+      pendingMembers,
+      expiredMembers,
+      newMembersThisMonth,
+      totalRevenueResult,
+      monthlyRevenueResult,
+      pendingPaymentsResult,
+      totalStaff,
+      activeStaff,
+      totalProducts,
+      lowStockCount,
+      totalInquiries,
+      newInquiries,
+      recentMembersForChart,
+      recentPaymentsForChart,
+      membersWithPlans,
+      pendingPaymentsList,
+      recentMembers,
+      recentPayments
+    ] = await Promise.all([
+      this.prisma.member.count(),
+      this.prisma.member.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.member.count({ where: { status: 'PENDING' } }),
+      this.prisma.member.count({ where: { status: 'EXPIRED' } }),
+      this.prisma.member.count({ where: { joinDate: { gte: firstDayOfMonth } } }),
+      this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
+      this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'PAID', paidAt: { gte: firstDayOfMonth } } }),
+      this.prisma.member.aggregate({ _sum: { pendingAmount: true } }),
+      this.prisma.staff.count(),
+      this.prisma.staff.count({ where: { isActive: true } }),
+      this.prisma.product.count(),
+      this.prisma.product.count({ where: { stock: { lte: 10 } } }),
+      this.prisma.inquiry.count(),
+      this.prisma.inquiry.count({ where: { status: 'NEW' } }),
+      this.prisma.member.findMany({ where: { joinDate: { gte: sixMonthsAgo } }, select: { joinDate: true } }),
+      this.prisma.payment.findMany({ where: { status: 'PAID', paidAt: { gte: sixMonthsAgo } }, select: { paidAt: true, amount: true } }),
+      this.prisma.member.findMany({ select: { plan: { select: { name: true } } } }),
+      this.prisma.member.findMany({ where: { pendingAmount: { gt: 0 } }, select: { id: true, name: true, pendingAmount: true, expiryDate: true }, take: 10 }),
+      this.prisma.member.findMany({ take: 5, orderBy: { id: 'desc' }, include: { plan: true } }),
+      this.prisma.payment.findMany({ take: 5, orderBy: { id: 'desc' }, include: { member: true } })
+    ]);
 
-    const newMembersThisMonth = await this.prisma.member.count({
-      where: { joinDate: { gte: firstDayOfMonth } },
-    });
-
-    const totalRevenueResult = await this.prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { status: 'PAID' },
-    });
     const totalRevenue = totalRevenueResult._sum.amount || 0;
-
-    const monthlyRevenueResult = await this.prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { status: 'PAID', paidAt: { gte: firstDayOfMonth } },
-    });
     const monthlyRevenue = monthlyRevenueResult._sum.amount || 0;
-
-    const pendingPaymentsResult = await this.prisma.member.aggregate({
-      _sum: { pendingAmount: true },
-    });
     const pendingPayments = pendingPaymentsResult._sum.pendingAmount || 0;
-
-    const totalStaff = await this.prisma.staff.count();
-    const activeStaff = await this.prisma.staff.count({
-      where: { isActive: true },
-    });
-
-    const totalProducts = await this.prisma.product.count();
-    const lowStockCount = await this.prisma.product.count({
-      where: { stock: { lte: 10 } },
-    });
-
-    const totalInquiries = await this.prisma.inquiry.count();
-    const newInquiries = await this.prisma.inquiry.count({
-      where: { status: 'NEW' },
-    });
-
-    // Dynamic Chart: Member Growth (Last 6 Months)
-    const recentMembersForChart = await this.prisma.member.findMany({
-      where: { joinDate: { gte: sixMonthsAgo } },
-      select: { joinDate: true },
-    });
-
-    // Dynamic Chart: Revenue (Last 6 Months)
-    const recentPaymentsForChart = await this.prisma.payment.findMany({
-      where: { status: 'PAID', paidAt: { gte: sixMonthsAgo } },
-      select: { paidAt: true, amount: true },
-    });
 
     const monthNames = [
       'Jan',
@@ -127,9 +116,6 @@ export class DashboardService {
     );
 
     // Dynamic membersByPlan
-    const membersWithPlans = await this.prisma.member.findMany({
-      include: { plan: true },
-    });
     const planCounts = new Map<string, number>();
     membersWithPlans.forEach((m) => {
       const pName = m.plan?.name || 'Unknown';
@@ -138,12 +124,6 @@ export class DashboardService {
     const membersByPlan = Array.from(planCounts.entries()).map(
       ([plan, count]) => ({ plan, count }),
     );
-
-    const pendingPaymentsList = await this.prisma.member.findMany({
-      where: { pendingAmount: { gt: 0 } },
-      select: { id: true, name: true, pendingAmount: true, expiryDate: true },
-      take: 10,
-    });
 
     return {
       success: true,
@@ -164,8 +144,8 @@ export class DashboardService {
         revenueChart,
         membersByPlan,
         membersByStatus: { active: activeMembers, pending: pendingMembers, expired: expiredMembers },
-        recentMembers: await this.prisma.member.findMany({ take: 5, orderBy: { id: 'desc' }, include: { plan: true } }),
-        recentPayments: await this.prisma.payment.findMany({ take: 5, orderBy: { id: 'desc' }, include: { member: true } }),
+        recentMembers,
+        recentPayments,
         pendingPaymentsList,
       },
     };

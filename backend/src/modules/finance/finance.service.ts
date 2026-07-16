@@ -4,12 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class FinanceService {
   constructor(private prisma: PrismaService) {}
 
-  async createPayment(dto: any) {
+  async createPayment(dto: CreatePaymentDto) {
     // BUG-006 FIX: Verify member exists before creating payment
     const member = await this.prisma.member.findUnique({
       where: { id: dto.memberId },
@@ -22,24 +23,28 @@ export class FinanceService {
       throw new BadRequestException('Payment amount must be greater than 0');
     }
 
-    const payment = await this.prisma.payment.create({
-      data: {
-        memberId: dto.memberId,
-        amount: dto.amount,
-        method: dto.method,
-        notes: dto.notes,
-        status: 'PAID',
-        invoiceNo: 'INV-' + Date.now(),
-        paidAt: new Date(),
-      },
-    });
-    await this.prisma.member.update({
-      where: { id: dto.memberId },
-      data: {
-        paidAmount: { increment: dto.amount },
-        pendingAmount: { decrement: dto.amount },
-      },
-    });
+    const newPending = Math.max(0, member.pendingAmount - dto.amount);
+
+    const [payment] = await this.prisma.$transaction([
+      this.prisma.payment.create({
+        data: {
+          memberId: dto.memberId,
+          amount: dto.amount,
+          method: dto.method,
+          notes: dto.notes,
+          status: 'PAID',
+          invoiceNo: 'INV-' + Date.now(),
+          paidAt: new Date(),
+        },
+      }),
+      this.prisma.member.update({
+        where: { id: dto.memberId },
+        data: {
+          paidAmount: { increment: dto.amount },
+          pendingAmount: newPending,
+        },
+      }),
+    ]);
     return { success: true, data: payment };
   }
 

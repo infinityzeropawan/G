@@ -80,7 +80,7 @@ export default function HR() {
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Staff',     value: summary?.totalStaff || 0,           color: 'text-blue-600',   bg: 'bg-blue-50',   icon: Users },
             { label: 'Active Staff',    value: summary?.activeStaff || 0,          color: 'text-green-600',  bg: 'bg-green-50',  icon: CheckCircle },
@@ -117,7 +117,7 @@ export default function HR() {
               <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
             ) : activeTab === 'Staff' ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead className="bg-gray-50"><tr>{['Name', 'Role', 'Phone', 'Branch', 'Salary', 'Joined', 'Actions'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {staff.map(s => (
@@ -147,7 +147,7 @@ export default function HR() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[800px]">
                   <thead className="bg-gray-50"><tr>{['Staff', 'Month', 'Amount', 'Status', 'Paid On', 'Actions'].map(h => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">{h}</th>)}</tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {payrolls.map(p => (

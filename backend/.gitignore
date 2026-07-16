@@ -33,6 +33,6 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# Environment variables (opt-in for testing)
-!.env
-!.env.*
+# Environment variables
+.env
+.env.*

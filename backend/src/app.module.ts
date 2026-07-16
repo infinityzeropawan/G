@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MembersModule } from './modules/members/members.module';
@@ -20,6 +22,12 @@ import { SettingsModule } from './modules/settings/settings.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    
+    // ─── Rate Limiting ────────────────────────────────────────────────────
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100, // global limit 100 requests per minute
+    }]),
 
     // ─── Database ─────────────────────────────────────────────────────────
     PrismaModule,
@@ -36,6 +44,12 @@ import { SettingsModule } from './modules/settings/settings.module';
     DashboardModule,
     InquiriesModule,
     SettingsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
