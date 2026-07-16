@@ -57,6 +57,10 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     setIsMobileOpen(false);
   }, [pathname]);
 
+  const filteredNavItems = user?.role === 'SUPERADMIN' 
+    ? navItems 
+    : navItems.filter(item => !['/settings', '/finance', '/hr'].includes(item.href));
+
   return (
     <>
       {/* Mobile Backdrop */}
